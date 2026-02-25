@@ -217,7 +217,8 @@ elif st.session_state.step == 3:
             }
             
             # 3. WEBHOOK URL
-            WEBHOOK_URL = "https://n0g4d.app.n8n.cloud/webhook-test/prenotazione-vaccheria"
+            # [TEST]: WEBHOOK_URL = "https://n0g4d.app.n8n.cloud/webhook-test/prenotazione-vaccheria"
+            WEBHOOK_URL = "https://n0g4d.app.n8n.cloud/webhook/prenotazione-vaccheria"
             
             with st.spinner('Invio richiesta in corso...'):
                 try:
