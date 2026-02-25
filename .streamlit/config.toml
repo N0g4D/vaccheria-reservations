@@ -1,0 +1,18 @@
+[theme]
+# Forza il tema chiaro per tutti gli utenti
+base="light"
+
+# Colore principale (quello dei bottoni e dei focus) - un rosso scuro/mattone elegante
+primaryColor="#c0392b"
+
+# Colore di sfondo della pagina (un bianco panna molto leggero)
+backgroundColor="#fdfbf7"
+
+# Colore di sfondo dei box secondari (es. il calendario)
+secondaryBackgroundColor="#f1f2f6"
+
+# Colore del testo (grigio antracite, più elegante del nero puro)
+textColor="#2c3e50"
+
+# Font di base
+font="sans serif"
