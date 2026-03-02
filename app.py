@@ -5,12 +5,12 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-# --- Email Config ---
+# --- email config ---
 EMAIL_SENDER = "anticavaccheriasocial@gmail.com"  # La mail che invia
 PASSWORD_SENDER = st.secrets["EMAIL_PASSWORD"]
 EMAIL_RECEIVER = "anticavaccheriasocial@gmail.com" # La mail che riceve (i dipendenti)
 
-# 1. Configurazione pagina
+# 1. page matadata
 st.set_page_config(
     page_title="Antica Vaccheria | Prenotazione", 
     layout="centered", 
@@ -18,40 +18,121 @@ st.set_page_config(
     page_icon="assets/favicon.png"
 )
 
-# 2. CSS Avanzato: Importiamo Montserrat e rendiamo tutto pulitissimo
+# 2. advanced css
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600&display=swap');
 
-    /* Forza l'uso del nuovo font su tutti gli elementi di testo */
     html, body, [class*="css"], p, h1, h2, h3, h4, h5, h6, span, label, div {
         font-family: 'Montserrat', sans-serif !important;
     }
-
-    /* Stile bottoni migliorato */
-    .stButton>button {
-        border-radius: 8px;
-        height: 2.8em;
-        font-weight: 600;
-        transition: all 0.3s ease;
+            
+    /* --- INGRANDIMENTO DI TUTTE LE ETICHETTE (LABEL) DEI CAMPI --- */
+    label[data-testid="stWidgetLabel"] p {
+        font-size: 1.2rem !important; /* Misura perfetta e coerente per il mobile */
+        font-weight: 400 !important;  /* Grassetto per dare enfasi al titolo del campo */
+        color: #1a1a1a !important;
+        margin-bottom: 8px !important; /* Dà il giusto respiro tra il titolo e il box/bottoni */
+    }
+            
+    /* --- dates style --- */
+    div[data-testid="stDateInput"] input,
+    div[data-testid="stTextInput"] input {
+        font-size: 1.4rem !important; /* Testo gigante dentro la box */
+        font-weight: 500 !important;
+        color: #1a1a1a !important;
+        padding: 12px 15px !important;
     }
     
-    /* Riduce lo spazio vuoto in alto */
-    .block-container {
-        padding-top: 2rem;
+    /* Evidenzia il bordo dei campi quando ci clicchi dentro */
+    div[data-testid="stDateInput"] div:focus-within,
+    div[data-testid="stTextInput"] div:focus-within {
+        border-color: #ff4b4b !important;
+        box-shadow: 0 0 0 2px rgba(255, 75, 75, 0.2) !important;
     }
+
+/* --- radio buttons style --- */
+    
+    /* 1. DISPOSIZIONE OTTIMIZZATA (Più bottoni per riga, centrati) */
+    div[role="radiogroup"] {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        justify-content: center !important; /* Li tiene belli centrati */
+        gap: 12px !important; /* Spazio giusto tra i bottoni */
+        width: 100% !important;
+    }
+
+    /* 2. KILLER DEL PALLINO (Nasconde il toggle di default) */
+    div[role="radiogroup"] label > div:first-child, 
+    div[role="radiogroup"] input[type="radio"] {
+        display: none !important; 
+    }
+
+    /* 3. LA FORMA DEL BOTTONE (Con respiro per gli orari) */
+    div[role="radiogroup"] label {
+        background-color: #f8f9fa !important;
+        border: 2px solid #e9ecef !important;
+        border-radius: 12px !important;
+        padding: 0 20px !important; /* 15px di spazio laterale per non schiacciare "19:30" */
+        margin: 0 !important;
+        cursor: pointer !important;
+        min-height: 55px !important;
+        min-width: 70px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        transition: all 0.2s ease;
+    }
+
+    /* 4. IL CONTENITORE DEL TESTO E IL NUMERO (Centratura assoluta) */
+    div[role="radiogroup"] label div[data-testid="stMarkdownContainer"] {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 100% !important;
+        margin: 0 !important;
+        margin-left: 0 !important; /* IL KILLER DEL DECENTRAMENTO A DESTRA */
+        padding: 0 !important;
+    }
+
+    div[role="radiogroup"] label p {
+        font-size: 1.3rem !important;
+        font-weight: 500 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        text-align: center !important;
+        width: 100% !important;
+        line-height: 1 !important;
+        color: #333 !important;
+    }
+
+    /* 5. EFFETTO "ACCESO" (Illuminazione quando cliccato) */
+    div[role="radiogroup"] label:has(input:checked),
+    div[role="radiogroup"] label[data-checked="true"] {
+        background-color: #ff4b4b !important;
+        border-color: #ff4b4b !important;
+        box-shadow: 0 4px 6px rgba(255, 75, 75, 0.3) !important; /* Piccolo alone figo */
+    }
+    
+    /* Fa diventare bianco il testo quando il bottone si accende di rosso */
+    div[role="radiogroup"] label:has(input:checked) p,
+    div[role="radiogroup"] label[data-checked="true"] p {
+        color: white !important;
+    }
+            
     </style>
 """, unsafe_allow_html=True)
 
-# Gestione dello stato di navigazione
+# set step status
 if 'step' not in st.session_state:
     st.session_state.step = 1
 
 if 'show_success' not in st.session_state:
     st.session_state.show_success = False
 
-# Funzione per inviare l'email con Python
-def invia_email_prenotazione(dati):
+# alert email for new reservations
+def send_email_reservation(dati):
     msg = MIMEMultipart()
     msg['From'] = f"Sito Antica Vaccheria <{EMAIL_SENDER}>"
     msg['To'] = EMAIL_RECEIVER
@@ -77,9 +158,9 @@ def invia_email_prenotazione(dati):
     msg.attach(MIMEText(corpo, 'plain'))
 
     try:
-        # Connessione al server di Gmail
+        # conn to gmail server
         server = smtplib.SMTP('smtp.gmail.com', 587)
-        server.starttls()  # Attiva la crittografia
+        server.starttls()  
         server.login(EMAIL_SENDER, PASSWORD_SENDER)
         server.send_message(msg)
         server.quit()
@@ -88,9 +169,8 @@ def invia_email_prenotazione(dati):
         return False, str(e)
 
 
-# Funzione per il Popup
 @st.dialog("🎉 Prenotazione Confermata!")
-def mostra_conferma_popup():
+def show_popup_confirm():
     st.write("La tua richiesta all'**Antica Vaccheria** è andata a buon fine.")
     st.image("https://media.giphy.com/media/1108D2tVaUN3eo/giphy.gif", use_container_width=True)
     
@@ -98,7 +178,7 @@ def mostra_conferma_popup():
         st.rerun()
 
 if st.session_state.show_success:
-    mostra_conferma_popup()
+    show_popup_confirm()
     st.session_state.show_success = False
 
 def next_step():
@@ -107,7 +187,7 @@ def next_step():
 def prev_step():
     st.session_state.step -= 1
 
-# 3. HEADER CON LOGO
+# 3. logo title image
 logo_path = "assets/logo.png"
 
 col_spazio_sx, col_logo, col_spazio_dx = st.columns([1, 2, 1])
@@ -123,13 +203,13 @@ st.divider()
 
 st.progress(st.session_state.step / 3)
 
-# --- FASE 1: DETTAGLI PRENOTAZIONE ---
+# --- phase 1: reservation details ---
 if st.session_state.step == 1:
     st.subheader("Dettagli della prenotazione")
     st.write("Seleziona le preferenze per il tuo tavolo.")
     
     people_options = ["1", "2", "3", "4", "5", "6", "7", "8", "9+"]
-    st.session_state.people = st.pills("Numero di ospiti", options=people_options, default=st.session_state.get('people', "2"))
+    st.session_state.people = st.radio("Numero di ospiti", options=people_options, index=people_options.index(st.session_state.get('people', "2")), horizontal=True)    
     
     if st.session_state.people == "9+":
         st.info(
@@ -147,8 +227,8 @@ if st.session_state.step == 1:
             format="DD/MM/YYYY" 
         )
         
-        hours_options = ["19:00", "19:30", "20:00", "20:30", "21:00", "21:30", "22:00"]
-        st.session_state.time = st.pills("Orario di arrivo", options=hours_options, default=st.session_state.get('time', None))
+        hours_options = ["19:00 ", "19:30", "20:00", "20:30", "21:00", "21:30", "22:00"]
+        st.session_state.time = st.radio("Orario di arrivo", options=hours_options, index=None, horizontal=True)        
         
         st.write("")
         
@@ -159,14 +239,18 @@ if st.session_state.step == 1:
                 next_step()
                 st.rerun()
 
-# --- FASE 2: DATI CLIENTE ---
+# --- phase 2: user data ---
 elif st.session_state.step == 2:
     st.subheader("I tuoi recapiti")
     st.write("Inserisci i tuoi dati per confermare la disponibilità.")
+    st.caption("I campi contrassegnati con l'asterisco ( * ) sono obbligatori.") # Messaggio di avviso
     
-    st.session_state.name = st.text_input("Nome e Cognome", value=st.session_state.get('name', ''))
-    st.session_state.email = st.text_input("Indirizzo Email", value=st.session_state.get('email', ''))
-    st.session_state.phone = st.text_input("Numero di Telefono", value=st.session_state.get('phone', ''))
+    # Aggiunti gli asterischi alle etichette
+    st.session_state.name = st.text_input("Nome e Cognome *", value=st.session_state.get('name', ''))
+    st.session_state.email = st.text_input("Indirizzo Email *", value=st.session_state.get('email', ''))
+    st.session_state.phone = st.text_input("Numero di Telefono *", value=st.session_state.get('phone', ''))
+    
+    # Lasciamo questo chiaramente opzionale
     st.session_state.notes = st.text_area("Richieste particolari (opzionale)", value=st.session_state.get('notes', ''), height=100)
     
     st.write("")
@@ -180,9 +264,9 @@ elif st.session_state.step == 2:
                 next_step()
                 st.rerun()
             else:
-                st.error("Nome, Email e Telefono sono campi obbligatori.")
+                st.error("⚠️ Attenzione: Nome, Email e Telefono sono campi obbligatori.")
 
-# --- PHASE 3: SUMMARY AND CONFIRMATION ---
+# --- phase 3: summary and confirmation ---
 elif st.session_state.step == 3:
     st.subheader("Riepilogo e Conferma")
     st.write("Controlla i dati inseriti prima di inviare la richiesta.")
@@ -233,8 +317,8 @@ elif st.session_state.step == 3:
             }
             
             with st.spinner('Invio richiesta in corso...'):
-                # Chiamata alla nuova funzione Python invece di n8n
-                success, error_msg = invia_email_prenotazione(payload)
+                # python func instead than n8n
+                success, error_msg = send_email_reservation(payload)
                 
                 if success:
                     keys_to_clear = ['name', 'email', 'phone', 'notes', 'time', 'people', 'date']
