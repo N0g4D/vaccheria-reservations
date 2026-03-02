@@ -1,5 +1,6 @@
 import streamlit as st
 import os
+import base64
 from datetime import datetime
 import smtplib
 from email.mime.text import MIMEText
@@ -174,8 +175,9 @@ def show_popup_confirm():
     st.write("La tua richiesta all'**Antica Vaccheria** è andata a buon fine.")
     st.image("https://media.giphy.com/media/1108D2tVaUN3eo/giphy.gif", use_container_width=True)
     
-    if st.button("Chiudi e torna alla Home", use_container_width=True):
-        st.rerun()
+    if st.button("Torna al sito", use_container_width=True):
+        # Il trucco magico per il redirect nella stessa scheda
+        st.markdown('<meta http-equiv="refresh" content="0;URL=https://anticavaccheria.it">', unsafe_allow_html=True)
 
 if st.session_state.show_success:
     show_popup_confirm()
@@ -187,16 +189,36 @@ def next_step():
 def prev_step():
     st.session_state.step -= 1
 
-# 3. logo title image
+# 3. logo title image (Cliccabile)
 logo_path = "assets/logo.png"
+website_url = "https://anticavaccheria.it"
 
 col_spazio_sx, col_logo, col_spazio_dx = st.columns([1, 2, 1])
+
 with col_logo:
     if os.path.exists(logo_path):
-        st.image(logo_path, use_container_width=True)
+        # Converte l'immagine in Base64 per integrarla nell'HTML
+        with open(logo_path, "rb") as image_file:
+            encoded_image = base64.b64encode(image_file.read()).decode()
+            
+        # Crea il link HTML con l'immagine dentro (target="_self" per non aprire nuove schede)
+        html_logo = f"""
+        <div style="text-align: center;">
+            <a href="{website_url}" target="_self">
+                <img src="data:image/png;base64,{encoded_image}" style="width: 100%; max-width: 300px; cursor: pointer; transition: transform 0.2s;">
+            </a>
+        </div>
+        """
+        st.markdown(html_logo, unsafe_allow_html=True)
     else:
-        st.markdown("<h1 style='text-align: center; font-weight: 600; color: #1a1a1a;'>Antica Vaccheria</h1>", unsafe_allow_html=True)
-        st.caption("Salva il logo in 'assets/logo.svg' per sostituire questo testo.")
+        # Anche il testo di fallback diventa un link se manca l'immagine
+        html_testo = f"""
+        <a href="{website_url}" target="_self" style="text-decoration: none;">
+            <h1 style='text-align: center; font-weight: 600; color: #1a1a1a;'>Antica Vaccheria</h1>
+        </a>
+        """
+        st.markdown(html_testo, unsafe_allow_html=True)
+        st.caption("Salva il logo in 'assets/logo.png' per sostituire questo testo.")
 
 st.markdown("<p style='text-align: center; color: #666; margin-top: -10px; font-size: 1.1em;'>Prenotazione Tavolo Online</p>", unsafe_allow_html=True)
 st.divider()
