@@ -3,20 +3,20 @@ enableCORS = false
 enableXsrfProtection = false
 
 [theme]
-# Forza il tema chiaro per tutti gli utenti
+# Force light theme for all users
 base="light"
 
-# Colore principale (quello dei bottoni e dei focus) - un rosso scuro/mattone elegante
+# Primary color (for buttons and focus states) - an elegant dark red/brick color
 primaryColor="#c0392b"
 
-# Colore di sfondo della pagina (un bianco panna molto leggero)
+# Page background color (a very light cream white)
 backgroundColor="#fdfbf7"
 
-# Colore di sfondo dei box secondari (es. il calendario)
+# Secondary background color for boxes (e.g., the calendar)
 secondaryBackgroundColor="#f1f2f6"
 
-# Colore del testo (grigio antracite, più elegante del nero puro)
+# Text color (anthracite gray, more elegant than pure black)
 textColor="#2c3e50"
 
-# Font di base
+# Base font
 font="sans serif"
