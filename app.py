@@ -1,3 +1,5 @@
+import gspread
+from google.oauth2.service_account import Credentials
 import streamlit as st
 import os
 import base64
@@ -7,9 +9,9 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 # --- email config ---
-EMAIL_SENDER = "anticavaccheriasocial@gmail.com"  # La mail che invia
+EMAIL_SENDER = st.secrets["EMAIL_SENDER"]
 PASSWORD_SENDER = st.secrets["EMAIL_PASSWORD"]
-EMAIL_RECEIVER = "anticavaccheriasocial@gmail.com" # La mail che riceve (i dipendenti)
+EMAIL_RECEIVER = st.secrets["EMAIL_RECEIVER"]
 
 # 1. page matadata
 st.set_page_config(
@@ -27,78 +29,81 @@ st.markdown("""
     html, body, [class*="css"], p, h1, h2, h3, h4, h5, h6, span, label, div {
         font-family: 'Montserrat', sans-serif !important;
     }
-            
-    /* --- INGRANDIMENTO DI TUTTE LE ETICHETTE (LABEL) DEI CAMPI --- */
-    label[data-testid="stWidgetLabel"] p {
-        font-size: 1.2rem !important; /* Misura perfetta e coerente per il mobile */
-        font-weight: 400 !important;  /* Grassetto per dare enfasi al titolo del campo */
-        color: #1a1a1a !important;
-        margin-bottom: 8px !important; /* Dà il giusto respiro tra il titolo e il box/bottoni */
+    
+    /* --- RIMOZIONE SPAZIO VUOTO IN ALTO --- */
+    .block-container {
+        padding-top: 1rem !important; /* Ancora più stretto in alto! */
+        padding-bottom: 1rem !important;
+    }
+    header[data-testid="stHeader"] {
+        display: none !important; 
     }
             
-    /* --- dates style --- */
+    /* --- ETICHETTE DEI CAMPI (Più compatte) --- */
+    label[data-testid="stWidgetLabel"] p {
+        font-size: 1.1rem !important; /* Leggermente ridotto */
+        font-weight: 600 !important;  
+        color: #1a1a1a !important;
+        margin-bottom: 2px !important; /* Quasi azzerato lo spazio sotto il titolo */
+    }
+            
+    /* --- CAMPI DI TESTO E DATA (Meno alti) --- */
     div[data-testid="stDateInput"] input,
     div[data-testid="stTextInput"] input {
-        font-size: 1.4rem !important; /* Testo gigante dentro la box */
+        font-size: 1.2rem !important; /* Da 1.4 a 1.2 per recuperare altezza */
         font-weight: 500 !important;
         color: #1a1a1a !important;
-        padding: 12px 15px !important;
+        padding: 8px 12px !important; /* Ridotto il "grasso" (padding) interno */
     }
     
-    /* Evidenzia il bordo dei campi quando ci clicchi dentro */
     div[data-testid="stDateInput"] div:focus-within,
     div[data-testid="stTextInput"] div:focus-within {
         border-color: #ff4b4b !important;
         box-shadow: 0 0 0 2px rgba(255, 75, 75, 0.2) !important;
     }
 
-/* --- radio buttons style --- */
-    
-    /* 1. DISPOSIZIONE OTTIMIZZATA (Più bottoni per riga, centrati) */
+    /* --- RADIO BUTTONS (Griglia più fitta) --- */
     div[role="radiogroup"] {
         display: flex !important;
         flex-direction: row !important;
         flex-wrap: wrap !important;
-        justify-content: center !important; /* Li tiene belli centrati */
-        gap: 12px !important; /* Spazio giusto tra i bottoni */
+        justify-content: center !important; 
+        gap: 8px !important; /* Ridotto lo spazio tra i bottoni (era 12) */
         width: 100% !important;
     }
 
-    /* 2. KILLER DEL PALLINO (Nasconde il toggle di default) */
     div[role="radiogroup"] label > div:first-child, 
     div[role="radiogroup"] input[type="radio"] {
         display: none !important; 
     }
 
-    /* 3. LA FORMA DEL BOTTONE (Con respiro per gli orari) */
     div[role="radiogroup"] label {
         background-color: #f8f9fa !important;
         border: 2px solid #e9ecef !important;
         border-radius: 12px !important;
-        padding: 0 20px !important; /* 15px di spazio laterale per non schiacciare "19:30" */
+        padding: 0 15px !important; /* Più stretti ai lati */
         margin: 0 !important;
         cursor: pointer !important;
-        min-height: 55px !important;
-        min-width: 70px !important;
+        min-height: 48px !important; /* Abbassata l'altezza (era 55) */
+        min-width: 60px !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
         transition: all 0.2s ease;
     }
 
-    /* 4. IL CONTENITORE DEL TESTO E IL NUMERO (Centratura assoluta) */
     div[role="radiogroup"] label div[data-testid="stMarkdownContainer"] {
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
         width: 100% !important;
         margin: 0 !important;
-        margin-left: 0 !important; /* IL KILLER DEL DECENTRAMENTO A DESTRA */
+        margin-left: 0 !important; 
         padding: 0 !important;
     }
 
     div[role="radiogroup"] label p {
-        font-size: 1.3rem !important;
+        font-size: 1.2rem !important; /* Testo dei bottoni un filo più piccolo */
         font-weight: 500 !important;
         margin: 0 !important;
         padding: 0 !important;
@@ -108,15 +113,13 @@ st.markdown("""
         color: #333 !important;
     }
 
-    /* 5. EFFETTO "ACCESO" (Illuminazione quando cliccato) */
     div[role="radiogroup"] label:has(input:checked),
     div[role="radiogroup"] label[data-checked="true"] {
         background-color: #ff4b4b !important;
         border-color: #ff4b4b !important;
-        box-shadow: 0 4px 6px rgba(255, 75, 75, 0.3) !important; /* Piccolo alone figo */
+        box-shadow: 0 4px 6px rgba(255, 75, 75, 0.3) !important; 
     }
     
-    /* Fa diventare bianco il testo quando il bottone si accende di rosso */
     div[role="radiogroup"] label:has(input:checked) p,
     div[role="radiogroup"] label[data-checked="true"] p {
         color: white !important;
@@ -125,7 +128,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# set step status
+# set step status (Ora sono 5 step)
 if 'step' not in st.session_state:
     st.session_state.step = 1
 
@@ -159,7 +162,6 @@ def send_email_reservation(dati):
     msg.attach(MIMEText(corpo, 'plain'))
 
     try:
-        # conn to gmail server
         server = smtplib.SMTP('smtp.gmail.com', 587)
         server.starttls()  
         server.login(EMAIL_SENDER, PASSWORD_SENDER)
@@ -168,7 +170,47 @@ def send_email_reservation(dati):
         return True, ""
     except Exception as e:
         return False, str(e)
-
+        
+# Function to save data to Google Sheets
+def save_to_google_sheet(dati):
+    try:
+        # 1. Define scopes (read/write access to Drive and Sheets)
+        scopes = [
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive"
+        ]
+        
+        # 2. Load credentials from Streamlit secrets
+        creds = Credentials.from_service_account_info(
+            dict(st.secrets["gcp_service_account"]), #using dict to avoid streamlit secrets parsing issues
+            scopes=scopes
+        )
+        
+        # 3. Authorize and connect to Google Sheets
+        client = gspread.authorize(creds)
+        
+        # 4. Open the specific Google Sheet by name
+        sheet = client.open_by_key("1qIMZyCwPRVGoms7WErW37LAbYjCCO2HjzLeHqr1Lv4E").sheet1
+        
+        # 5. Prepare the row data to append
+        # Columns: Date | Time | Guests | Name | Phone | Email | Notes | Final Check
+        nuova_riga = [
+            dati['date'],
+            dati['time'],
+            dati['guests'],
+            dati['name'],
+            dati['phone'],
+            dati['email'],
+            dati['notes'],
+            False 
+        ]
+        
+        # 6. insert the row to the start of the sheet
+        sheet.insert_row(nuova_riga, index=2, value_input_option='USER_ENTERED')
+        return True, ""
+        
+    except Exception as e:
+        return False, str(e)
 
 @st.dialog("🎉 Prenotazione Confermata!")
 def show_popup_confirm():
@@ -176,7 +218,6 @@ def show_popup_confirm():
     st.image("https://media.giphy.com/media/1108D2tVaUN3eo/giphy.gif", use_container_width=True)
     
     if st.button("Torna al sito", use_container_width=True):
-        # Il trucco magico per il redirect nella stessa scheda
         st.markdown('<meta http-equiv="refresh" content="0;URL=https://anticavaccheria.it">', unsafe_allow_html=True)
 
 if st.session_state.show_success:
@@ -197,11 +238,9 @@ col_spazio_sx, col_logo, col_spazio_dx = st.columns([1, 2, 1])
 
 with col_logo:
     if os.path.exists(logo_path):
-        # Converte l'immagine in Base64 per integrarla nell'HTML
         with open(logo_path, "rb") as image_file:
             encoded_image = base64.b64encode(image_file.read()).decode()
             
-        # Crea il link HTML con l'immagine dentro (target="_self" per non aprire nuove schede)
         html_logo = f"""
         <div style="text-align: center;">
             <a href="{website_url}" target="_self">
@@ -211,7 +250,6 @@ with col_logo:
         """
         st.markdown(html_logo, unsafe_allow_html=True)
     else:
-        # Anche il testo di fallback diventa un link se manca l'immagine
         html_testo = f"""
         <a href="{website_url}" target="_self" style="text-decoration: none;">
             <h1 style='text-align: center; font-weight: 600; color: #1a1a1a;'>Antica Vaccheria</h1>
@@ -223,12 +261,12 @@ with col_logo:
 st.markdown("<p style='text-align: center; color: #666; margin-top: -10px; font-size: 1.1em;'>Prenotazione Tavolo Online</p>", unsafe_allow_html=True)
 st.divider()
 
-st.progress(st.session_state.step / 3)
+# Barra divisa in 5 step ora
+st.progress(st.session_state.step / 5)
 
-# --- phase 1: reservation details ---
+# --- STEP 1: NUMERO OSPITI ---
 if st.session_state.step == 1:
-    st.subheader("Dettagli della prenotazione")
-    st.write("Seleziona le preferenze per il tuo tavolo.")
+    st.subheader("Quante persone sarete?")
     
     people_options = ["1", "2", "3", "4", "5", "6", "7", "8", "9+"]
     st.session_state.people = st.radio("Numero di ospiti", options=people_options, index=people_options.index(st.session_state.get('people', "2")), horizontal=True)    
@@ -242,18 +280,31 @@ if st.session_state.step == 1:
             "o scriverci a **anticavaccheriasocial@gmail.com**."
         )
     else:
-        st.session_state.date = st.date_input(
-            "Data della prenotazione", 
-            min_value=datetime.today(),
-            value=st.session_state.get('date', datetime.today()),
-            format="DD/MM/YYYY" 
-        )
-        
-        hours_options = ["19:00 ", "19:30", "20:00", "20:30", "21:00", "21:30", "22:00"]
-        st.session_state.time = st.radio("Orario di arrivo", options=hours_options, index=None, horizontal=True)        
-        
-        st.write("")
-        
+        # Spazio rimosso, andiamo diretti al bottone
+        st.markdown("<br>", unsafe_allow_html=True) # Un micro-spazio controllato
+        if st.button("Scegli Data e Ora", type="primary", use_container_width=True):
+            next_step()
+            st.rerun()
+
+# --- STEP 2: DATA E ORA ---
+elif st.session_state.step == 2:
+    st.subheader("Quando ci verrete a trovare?")
+    
+    st.session_state.date = st.date_input(
+        "Data della prenotazione", 
+        min_value=datetime.today(),
+        value=st.session_state.get('date', datetime.today()),
+        format="DD/MM/YYYY" 
+    )
+    
+    hours_options = ["19:00", "19:30", "20:00", "20:30", "21:00", "21:30", "22:00"]
+    st.session_state.time = st.radio("Orario di arrivo", options=hours_options, index=None if not st.session_state.get('time') else hours_options.index(st.session_state.get('time')), horizontal=True)        
+    
+    # Rimosso il <br> per non spingere i bottoni in basso
+    col1, col2 = st.columns(2)
+    with col1:
+        st.button("Indietro", on_click=prev_step, use_container_width=True)
+    with col2:
         if st.button("Prosegui ai recapiti", type="primary", use_container_width=True):
             if not st.session_state.time:
                 st.error("Per favore, seleziona l'orario di arrivo.")
@@ -261,35 +312,46 @@ if st.session_state.step == 1:
                 next_step()
                 st.rerun()
 
-# --- phase 2: user data ---
-elif st.session_state.step == 2:
+# --- STEP 3: RECAPITI OBBLIGATORI ---
+elif st.session_state.step == 3:
     st.subheader("I tuoi recapiti")
-    st.write("Inserisci i tuoi dati per confermare la disponibilità.")
-    st.caption("I campi contrassegnati con l'asterisco ( * ) sono obbligatori.") # Messaggio di avviso
+    # Rimosso il st.caption. L'asterisco parla da solo e risparmiamo 20px preziosi!
     
-    # Aggiunti gli asterischi alle etichette
     st.session_state.name = st.text_input("Nome e Cognome *", value=st.session_state.get('name', ''))
     st.session_state.email = st.text_input("Indirizzo Email *", value=st.session_state.get('email', ''))
     st.session_state.phone = st.text_input("Numero di Telefono *", value=st.session_state.get('phone', ''))
     
-    # Lasciamo questo chiaramente opzionale
-    st.session_state.notes = st.text_area("Richieste particolari (opzionale)", value=st.session_state.get('notes', ''), height=100)
+    # Rimosso il <br> qui sotto
+    col1, col2 = st.columns(2)
+    with col1:
+        st.button("Indietro", on_click=prev_step, use_container_width=True)
+    with col2:
+        if st.button("Prosegui alle Note", type="primary", use_container_width=True):
+            if st.session_state.name and st.session_state.email and st.session_state.phone:
+                next_step()
+                st.rerun()
+            else:
+                st.error("⚠️ Nome, Email e Telefono sono obbligatori.")
+
+# --- STEP 4: NOTE E RICHIESTE (OPZIONALE) ---
+elif st.session_state.step == 4:
+    st.subheader("Hai richieste particolari?")
+    st.caption("Allergie, seggioloni, o preferenze per il tavolo. (Opzionale)") 
     
-    st.write("")
+    st.session_state.notes = st.text_area("Scrivi qui le tue note", value=st.session_state.get('notes', ''), height=150)
+    
+    st.markdown("<br>", unsafe_allow_html=True)
     
     col1, col2 = st.columns(2)
     with col1:
         st.button("Indietro", on_click=prev_step, use_container_width=True)
     with col2:
         if st.button("Vai al riepilogo", type="primary", use_container_width=True):
-            if st.session_state.name and st.session_state.email and st.session_state.phone:
-                next_step()
-                st.rerun()
-            else:
-                st.error("⚠️ Attenzione: Nome, Email e Telefono sono campi obbligatori.")
+            next_step()
+            st.rerun()
 
-# --- phase 3: summary and confirmation ---
-elif st.session_state.step == 3:
+# --- STEP 5: RIEPILOGO E GDPR ---
+elif st.session_state.step == 5:
     st.subheader("Riepilogo e Conferma")
     st.write("Controlla i dati inseriti prima di inviare la richiesta.")
     
@@ -321,6 +383,14 @@ elif st.session_state.step == 3:
     
     st.write("")
     
+    # --- CHECKBOX GDPR OBBIGATORIO ---
+    privacy_accepted = st.checkbox(
+        "Ho letto e accetto la [Privacy Policy](https://anticavaccheria.it/privacy-policy) per la gestione della prenotazione. *",
+        value=False
+    )
+    
+    st.write("")
+    
     col1, col2 = st.columns(2)
     with col1:
         st.button("Indietro", on_click=prev_step, use_container_width=True)
@@ -328,21 +398,33 @@ elif st.session_state.step == 3:
     with col2:
         if st.button("Conferma Prenotazione", type="primary", use_container_width=True):
             
-            payload = {
-                "name": name,
-                "email": email,
-                "phone": phone,
-                "date": formatted_date,
-                "time": time,
-                "guests": guests,
-                "notes": notes
-            }
-            
-            with st.spinner('Invio richiesta in corso...'):
-                # python func instead than n8n
-                success, error_msg = send_email_reservation(payload)
+            # Controllo GDPR
+            if not privacy_accepted:
+                st.error("⚠️ Devi accettare la Privacy Policy per inviare la richiesta.")
+            else:
+                payload = {
+                    "name": name,
+                    "email": email,
+                    "phone": phone,
+                    "date": formatted_date,
+                    "time": time,
+                    "guests": guests,
+                    "notes": notes
+                }
                 
-                if success:
+                with st.spinner('Saving reservation...'):
+                    # 1. Try to save on Google Sheets FIRST
+                    success_sheets, error_msg_sheets = save_to_google_sheet(payload)
+                    
+                    # If it fails, STOP EVERYTHING and show the exact error!
+                    if not success_sheets:
+                        st.error(f"🚨 GOOGLE SHEETS ERROR: {error_msg_sheets}")
+                        st.stop() # <--- THE MAGIC COMMAND THAT HALTS THE APP
+                    
+                    # 2. If it gets here, Sheets worked! Let's also send the backup email:
+                    send_email_reservation(payload) 
+                    
+                    # 3. Clean up session state and rerun to show the success popup
                     keys_to_clear = ['name', 'email', 'phone', 'notes', 'time', 'people', 'date']
                     for key in keys_to_clear:
                         if key in st.session_state:
@@ -351,5 +433,3 @@ elif st.session_state.step == 3:
                     st.session_state.step = 1
                     st.session_state.show_success = True
                     st.rerun()
-                else:
-                    st.error(f"Errore durante l'invio dell'email: {error_msg}")
