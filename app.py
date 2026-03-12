@@ -30,7 +30,7 @@ st.markdown("""
         font-family: 'Montserrat', sans-serif !important;
     }
     
-    /* --- RIMOZIONE SPAZIO VUOTO IN ALTO --- */
+    /* --- deleting blank header space --- */
     .block-container {
         padding-top: 1rem !important; /* Ancora più stretto in alto! */
         padding-bottom: 1rem !important;
@@ -39,7 +39,7 @@ st.markdown("""
         display: none !important; 
     }
             
-    /* --- ETICHETTE DEI CAMPI (Più compatte) --- */
+    /* --- field labels more compact --- */
     label[data-testid="stWidgetLabel"] p {
         font-size: 1.1rem !important; /* Leggermente ridotto */
         font-weight: 600 !important;  
@@ -47,7 +47,7 @@ st.markdown("""
         margin-bottom: 2px !important; /* Quasi azzerato lo spazio sotto il titolo */
     }
             
-    /* --- CAMPI DI TESTO E DATA (Meno alti) --- */
+    /* --- less height of fields --- */
     div[data-testid="stDateInput"] input,
     div[data-testid="stTextInput"] input {
         font-size: 1.2rem !important; /* Da 1.4 a 1.2 per recuperare altezza */
@@ -62,13 +62,13 @@ st.markdown("""
         box-shadow: 0 0 0 2px rgba(255, 75, 75, 0.2) !important;
     }
 
-    /* --- RADIO BUTTONS (Griglia più fitta) --- */
+    /* --- RADIO BUTTONS (Griglia super elastica mobile-friendly) --- */
     div[role="radiogroup"] {
         display: flex !important;
         flex-direction: row !important;
         flex-wrap: wrap !important;
         justify-content: center !important; 
-        gap: 8px !important; /* Ridotto lo spazio tra i bottoni (era 12) */
+        gap: 4px !important; /* Spazio ridotto al minimo vitale */
         width: 100% !important;
     }
 
@@ -80,12 +80,13 @@ st.markdown("""
     div[role="radiogroup"] label {
         background-color: #f8f9fa !important;
         border: 2px solid #e9ecef !important;
-        border-radius: 12px !important;
-        padding: 0 15px !important; /* Più stretti ai lati */
+        border-radius: 10px !important;
+        padding: 0 5px !important; /* Margini interni quasi azzerati */
         margin: 0 !important;
         cursor: pointer !important;
-        min-height: 48px !important; /* Abbassata l'altezza (era 55) */
-        min-width: 60px !important;
+        min-height: 42px !important; /* Ancora più bassi */
+        min-width: 0 !important; /* LIBERIAMO LA LARGHEZZA! */
+        flex: 1 1 auto !important; /* Magia: i bottoni diventano fluidi ed elastici */
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
@@ -98,12 +99,11 @@ st.markdown("""
         justify-content: center !important;
         width: 100% !important;
         margin: 0 !important;
-        margin-left: 0 !important; 
         padding: 0 !important;
     }
 
     div[role="radiogroup"] label p {
-        font-size: 1.2rem !important; /* Testo dei bottoni un filo più piccolo */
+        font-size: 1.05rem !important; /* Testo leggermente più piccolo per farcelo stare */
         font-weight: 500 !important;
         margin: 0 !important;
         padding: 0 !important;
@@ -315,19 +315,31 @@ elif st.session_state.step == 2:
 # --- STEP 3: RECAPITI OBBLIGATORI ---
 elif st.session_state.step == 3:
     st.subheader("I tuoi recapiti")
-    # Rimosso il st.caption. L'asterisco parla da solo e risparmiamo 20px preziosi!
     
-    st.session_state.name = st.text_input("Nome e Cognome *", value=st.session_state.get('name', ''))
-    st.session_state.email = st.text_input("Indirizzo Email *", value=st.session_state.get('email', ''))
-    st.session_state.phone = st.text_input("Numero di Telefono *", value=st.session_state.get('phone', ''))
-    
-    # Rimosso il <br> qui sotto
-    col1, col2 = st.columns(2)
-    with col1:
-        st.button("Indietro", on_click=prev_step, use_container_width=True)
-    with col2:
-        if st.button("Prosegui alle Note", type="primary", use_container_width=True):
-            if st.session_state.name and st.session_state.email and st.session_state.phone:
+    # Usiamo un "form" invisibile (border=False) per ingannare l'autocompletamento di Chrome
+    with st.form("form_recapiti", border=False):
+        name_val = st.text_input("Nome e Cognome *", value=st.session_state.get('name', ''))
+        email_val = st.text_input("Indirizzo Email *", value=st.session_state.get('email', ''))
+        phone_val = st.text_input("Numero di Telefono *", value=st.session_state.get('phone', ''))
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            # I bottoni dentro un form devono essere st.form_submit_button
+            btn_back = st.form_submit_button("Indietro", use_container_width=True)
+        with col2:
+            btn_next = st.form_submit_button("Prosegui alle Note", type="primary", use_container_width=True)
+            
+        # Logica dei bottoni gestita fuori dalle colonne ma dentro il form
+        if btn_back:
+            prev_step()
+            st.rerun()
+            
+        if btn_next:
+            if name_val and email_val and phone_val:
+                # Salviamo i dati catturati nel session_state
+                st.session_state.name = name_val
+                st.session_state.email = email_val
+                st.session_state.phone = phone_val
                 next_step()
                 st.rerun()
             else:
